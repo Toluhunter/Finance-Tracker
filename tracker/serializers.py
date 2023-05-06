@@ -6,7 +6,11 @@ from .models import Track
 
 
 class TrackSerializer(serializers.ModelSerializer):
-
+    
+    '''
+    TrackSerializer serializes Track objects and includes the id, category, amount, and date fields.
+    It also sets the user field to the authenticated user and makes the id field read-only.
+    '''
     class Meta:
         model = Track
         fields = [
@@ -24,6 +28,11 @@ class TrackSerializer(serializers.ModelSerializer):
 
 
 class CreateTransactionSerializer(serializers.ModelSerializer):
+    '''
+    CreateTransactionSerializer serializes Track objects for creating new transactions.
+    It includes the category and amount fields, sets the user field to the authenticated user,
+    and validates the category choice field using the available categories in Track model.
+    '''
 
     category = serializers.ChoiceField(
         choices=Track.categories,

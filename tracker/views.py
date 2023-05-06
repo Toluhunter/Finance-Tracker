@@ -17,13 +17,20 @@ from .models import Track
 
 
 class FetchTransactionView(generics.GenericAPIView):
+    '''
+    FetchTransactionView handles GET requests to retrieve transaction data filtered by month and year.
+    It requires authentication and uses the TrackSerializer class to serialize the data returned from the Track model.
+    '''
+    
     permission_classes = [IsAuthenticated]
     serializer_class = TrackSerializer
 
     def get_object(self):
+        # get_object method retrieves the data based on the provided month and year parameters.
         query = Track.objects.filter(user=self.request.user)
 
         if "month" in self.request.GET:
+            # If month is provided in the request parameters, validate it and filter the query accordingly.
             month = self.request.GET["month"]
             if not month.isdigit():
                 raise Http404("Invalid Month")
@@ -35,6 +42,7 @@ class FetchTransactionView(generics.GenericAPIView):
             query = query.filter(date__month=month)
 
         if "year" in self.request.GET:
+            # If year is provided in the request parameters, validate it and filter the query accordingly.
             year = self.request.GET["year"]
             if not year.isdigit():
                 raise Http404("Invalid Year")
@@ -49,7 +57,7 @@ class FetchTransactionView(generics.GenericAPIView):
         return query
 
     def get(self, request):
-
+        # get method retrieves the filtered data using get_object and returns it as a Response object.
         query = self.get_object()
 
         serializer = self.get_serializer(many=True, instance=query)
@@ -57,6 +65,7 @@ class FetchTransactionView(generics.GenericAPIView):
         data = dict()
 
         for filter, category in Track.categories:
+            # Group the data by category and return the total amount spent for each category.
             data[category] = 0
             for amount in query.filter(category=filter).values_list("amount"):
                 data[category] += amount[0]
@@ -67,12 +76,20 @@ class FetchTransactionView(generics.GenericAPIView):
 
 
 class AddTransactionView(generics.CreateAPIView):
+    '''
+    AddTransactionView handles POST requests to add new transaction data.
+    It requires authentication and uses the CreateTransactionSerializer class to serialize the data sent in the request body.
+    '''
 
     permission_classes = [IsAuthenticated]
     serializer_class = CreateTransactionSerializer
 
 
 class ListCategoriesView(generics.ListAPIView):
+    '''
+    ListCategoriesView handles GET requests to retrieve a list of transaction categories.
+    It requires authentication and returns a list of categories defined in the Track model.
+    '''
 
     permission_classes = [IsAuthenticated]
 
@@ -83,71 +100,3 @@ class ListCategoriesView(generics.ListAPIView):
 
         return Response(categories)
 
-
-class GenerateReceiptView(generics.GenericAPIView):
-
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self):
-        id = self.kwargs["id"]
-        obj = get_object_or_404(Track, id=id)
-        return obj
-
-    def get(self, request, *args, **kwargs):
-        client = boto3.client('sns', region_name=settings.AWS_REGION)
-        obj = self.get_object()
-        subscribe_arn = None
-        try:
-
-            # Specify the SNS topic ARN
-            topic_arn = settings.SNS_TOPIC_ARN
-
-            # Set the email address to check for
-            email = request.user.email
-
-            # List all subscriptions for the topic
-            response = client.list_subscriptions_by_topic(TopicArn=topic_arn)
-
-            # Filter the subscriptions by email address
-
-            for sub in response['Subscriptions']:
-                if sub['Protocol'] == 'email' and sub['Endpoint'] == email:
-                    subscribe_arn = sub['SubscriptionArn']
-
-            # Check if there is a subscription for the email
-            if subscribe_arn:
-                response = client.publish(
-                    # Message=f'''
-                    #     Requested Reciept For Finance Tracker
-
-                    # {request.user.username} Performed A Transaction of ${obj.amount}
-                    # Under the Category of {obj.category}
-
-                    # at {obj.date}
-                    # ''',
-                    Message="Cool",
-                    Subject="Recipet Report",
-                    MessageStructure='string',
-                    MessageAttributes={
-                        'email': {
-                            'DataType': 'String',
-                            'StringValue': request.user.email,
-                        }
-                    },
-                    TargetArn=subscribe_arn
-                )
-        except ClientError as e:
-            error = e.response['Error']
-            if error['Code'] == 'TargetNotSubscribed':
-                # The TargetArn has not accepted the subscription
-                error_message = 'The subscription confirmation has not been accepted. Please check your email for the confirmation link.'
-                return Response({'success': False, 'error': error_message})
-            else:
-                # Other error occurred
-                if "Message" in error:
-                    error_message = f'{error["Code"]}: {error["Message"]}'
-                    return Response({'success': False, 'error': error_message, "arn": subscribe_arn})
-
-                return Response({"success": "failed", "error": error})
-
-        return Response({"success": True, "message": "Reciept Has been Sent to your email"}, status=status.HTTP_200_OK)

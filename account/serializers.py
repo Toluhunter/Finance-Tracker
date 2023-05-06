@@ -1,10 +1,6 @@
 
 from django.conf import settings
 
-import boto3
-from botocore.exceptions import ClientError
-
-
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 
@@ -12,6 +8,11 @@ User = get_user_model()
 
 
 class AccountSerializer(serializers.ModelSerializer):
+    '''
+    AccountSerilizer Serializes the data for the authenticated user and handles creation of users and updating of user details
+    It includes the id, username, email, first_name, last_name and password
+    Sets id to read only and password to write only
+    '''
     class Meta:
         model = User
         fields = [
@@ -30,29 +31,15 @@ class AccountSerializer(serializers.ModelSerializer):
         self.fields["password"].write_only = True
 
     def create(self, validated_data):
-        user = self.Meta.model.objects.create_user(**validated_data)
-        client = boto3.client('sns', region_name=settings.AWS_REGION)
-        try:
-            response = client.subscribe(
-                TopicArn=settings.SNS_TOPIC_ARN, Protocol='email', Endpoint=user.email)
-        except ClientError as e:
-            if e.response['Error']['Code'] == 'InvalidParameter':
-                raise serializers.ValidationError(
-                    {'email': 'Invalid email address'})
-            elif e.response['Error']['Code'] == 'EndpointDisabled':
-                raise serializers.ValidationError(
-                    {'email': 'Email address is disabled'})
-            elif e.response['Error']['Code'] == 'AuthorizationError':
-                raise serializers.ValidationError(f'Authorization error: {e}')
-            else:
-                raise serializers.ValidationError(f'Unexpected error: {e}')
-        except:
-            pass
-
-        return user
+        '''
+        Creates new user
+        '''
+        return self.Meta.model.objects.create_user(**validated_data)
 
     def update(self, instance, validated_data):
-
+        '''
+        Update user details, users can only update email, first_name and last_name
+        '''
         instance.email = validated_data.get("email", instance.email)
         instance.first_name = validated_data.get(
             "first_name", instance.first_name)
@@ -65,13 +52,18 @@ class AccountSerializer(serializers.ModelSerializer):
         return instance
 
 
-class LoginSerilizer(serializers.Serializer):
+class LoginSerializer(serializers.Serializer):
+    '''
+    LoginSerilizer Handles user credential validation
+    '''
 
     username = serializers.CharField(max_length=60, required=True)
     password = serializers.CharField(max_length=60, required=True)
 
     def validate(self, attrs):
-
+        '''
+        Verifies Username and Password
+        '''
         user = authenticate(
             username=attrs["username"], password=attrs["password"])
 
@@ -84,16 +76,24 @@ class LoginSerilizer(serializers.Serializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
+    '''
+    ChangePasswordSerilizer Handles changing of users password
+    '''
 
     old_password = serializers.CharField(required=True, max_length=100)
     new_password = serializers.CharField(required=True, max_length=100)
 
     def validate(self, attrs):
+        '''
+        Validates old password
+        '''
         user = self.context["request"].user
         if not user.check_password(attrs["old_password"]):
+            # validates old password
             raise serializers.ValidationError("Wrong Password")
 
         if attrs["new_password"] == attrs["old_password"]:
+            # verifies new password is different from old password
             raise serializers.ValidationError(
                 "Old and New Password cannot be the same")
 
