@@ -56,7 +56,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'reciept_generator.urls'
+ROOT_URLCONF = 'finance_tracker.urls'
 
 TEMPLATES = [
     {
@@ -80,7 +80,7 @@ STORAGES = {
     },
 }
 
-WSGI_APPLICATION = 'reciept_generator.wsgi.application'
+WSGI_APPLICATION = 'finance_tracker.wsgi.application'
 
 
 # Database
@@ -93,7 +93,8 @@ DATABASES = {
     }
 }
 
-DATABASES["default"] = dj_database_url.config(default=os.getenv("DATABASE_URL"))
+DATABASES["default"] = dj_database_url.config(
+    default=os.getenv("DATABASE_URL"))
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
