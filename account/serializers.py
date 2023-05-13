@@ -16,7 +16,6 @@ class AccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "id",
             "username",
             "email",
             "first_name",
@@ -27,7 +26,6 @@ class AccountSerializer(serializers.ModelSerializer):
     def __init__(self, instance=None, **kwargs):
         super().__init__(instance, **kwargs)
 
-        self.fields["id"].read_only = True
         self.fields["password"].write_only = True
 
     def create(self, validated_data):

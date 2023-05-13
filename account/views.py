@@ -8,13 +8,28 @@ from rest_framework import status
 from .serializers import AccountSerializer, LoginSerializer, ChangePasswordSerializer
 
 
-class RegisterView(generics.CreateAPIView):
+class RegisterView(generics.GenericAPIView):
     '''
     RegisterView handles POST request to register new users with provided details
     Makes use of AccountSerilizer
     '''
 
     serializer_class = AccountSerializer
+
+    def post(self, request):
+        '''
+        Post method recieves user details creates user and sends back API token and user details
+        '''
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        token, _ = Token.objects.get_or_create(user=user)
+
+        data = dict()
+        data["token"] = str(token)
+
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class AccountView(generics.RetrieveUpdateAPIView):
@@ -51,6 +66,7 @@ class LoginView(generics.GenericAPIView):
         }
 
         return Response(response, status=status.HTTP_200_OK)
+
 
 class ChangePasswordView(generics.GenericAPIView):
     '''

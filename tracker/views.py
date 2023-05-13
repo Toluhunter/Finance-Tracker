@@ -1,5 +1,3 @@
-import boto3
-from botocore.exceptions import ClientError
 from datetime import datetime
 
 from django.shortcuts import get_object_or_404
@@ -21,7 +19,7 @@ class FetchTransactionView(generics.GenericAPIView):
     FetchTransactionView handles GET requests to retrieve transaction data filtered by month and year.
     It requires authentication and uses the TrackSerializer class to serialize the data returned from the Track model.
     '''
-    
+
     permission_classes = [IsAuthenticated]
     serializer_class = TrackSerializer
 
@@ -99,4 +97,3 @@ class ListCategoriesView(generics.ListAPIView):
             categories += (category,)
 
         return Response(categories)
-

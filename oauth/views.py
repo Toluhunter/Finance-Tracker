@@ -1,6 +1,4 @@
 import requests
-import boto3
-from botocore.exceptions import ClientError
 
 from django.views import generic
 from django.conf import settings
@@ -25,6 +23,10 @@ User = get_user_model()
 
 
 class AddTransaction(generics.CreateAPIView):
+    '''
+    AddTransactionView handles POST to add a transaction
+    It requires Authentication and makes use of TrackSerializer
+    '''
 
     authentication_classes = [OAuth2Authentication]
     permission_classes = [IsAuthenticated, TokenHasScope]
@@ -76,6 +78,7 @@ class GoogleAuthView(generics.GenericAPIView):
 
         # Create a new user account with the user info
         try:
+            # If user Exists L
             user = User.objects.create(
                 username=email,
                 first_name=first_name,
@@ -83,30 +86,10 @@ class GoogleAuthView(generics.GenericAPIView):
                 email=email,
                 password=make_password(None)
             )
-            client = boto3.client('sns', region_name=settings.AWS_REGION)
-            try:
-                response = client.subscribe(
-                    TopicArn=settings.SNS_TOPIC_ARN, Protocol='email', Endpoint=user.email)
-            except ClientError as e:
-                if e.response['Error']['Code'] == 'InvalidParameter':
-                    raise serializers.ValidationError(
-                        {'email': 'Invalid email address'})
-                elif e.response['Error']['Code'] == 'EndpointDisabled':
-                    raise serializers.ValidationError(
-                        {'email': 'Email address is disabled'})
-                elif e.response['Error']['Code'] == 'AuthorizationError':
-                    raise serializers.ValidationError(
-                        f'Authorization error: {e}')
-                else:
-                    raise serializers.ValidationError(f'Unexpected error: {e}')
-            except:
-                pass
 
         except:
-            try:
-                user = User.objects.get(email=email)
-            except User.DoesNotExist:
-                return Response({'error': 'Failed to authenticate user from Google'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user = User.objects.get(email=email)
 
         token, _ = Token.objects.get_or_create(user=user)
         response = {
@@ -152,28 +135,9 @@ class WalletAuthView(generics.GenericAPIView):
                 email=email,
                 password=make_password(None)
             )
-            client = boto3.client('sns', region_name=settings.AWS_REGION)
-            try:
-                response = client.subscribe(
-                    TopicArn=settings.SNS_TOPIC_ARN, Protocol='email', Endpoint=user.email)
-            except ClientError as e:
-                if e.response['Error']['Code'] == 'InvalidParameter':
-                    raise serializers.ValidationError(
-                        {'email': 'Invalid email address'})
-                elif e.response['Error']['Code'] == 'EndpointDisabled':
-                    raise serializers.ValidationError(
-                        {'email': 'Email address is disabled'})
-                elif e.response['Error']['Code'] == 'AuthorizationError':
-                    raise serializers.ValidationError(
-                        f'Authorization error: {e}')
-                else:
-                    raise serializers.ValidationError(f'Unexpected error: {e}')
 
         except:
-            try:
-                user = User.objects.get(email=email)
-            except User.DoesNotExist:
-                return Response({'error': 'Failed to authenticate user from Wallet'}, status=status.HTTP_400_BAD_REQUEST)
+            user = User.objects.get(email=email)
 
         token, _ = Token.objects.get_or_create(user=user)
         response = {
